@@ -54,6 +54,14 @@ class _HomeScreenState extends State<HomeScreen> {
     _resultFieldController.text = '';
   }
 
+  @override
+  void dispose() {
+    // Dispose controllers to avoid memory leaks
+    _valueController.dispose();
+    _resultFieldController.dispose();
+    super.dispose();
+  }
+
   List<String> _compatibleTargets(String fromUnit) {
     // Return all units that belong to the same category as fromUnit (both systems)
     final category = _category;
@@ -79,6 +87,17 @@ class _HomeScreenState extends State<HomeScreen> {
     'pounds': 0.45359237,
     'ounces': 0.028349523125,
   };
+
+  // ---------------------------------------------------------------------------
+  // Conversion contract:
+  // - Input: numeric value in the "from" unit
+  // - Output: numeric value in the "to" unit
+  // Implementation: convert the input to a base unit (meters or kilograms)
+  //                 using `_toBase`, then convert from the base unit to
+  //                 the target unit by dividing by the target factor.
+  // Error modes: if parsing fails, show validation message; if units are
+  //              unknown, fall back to a 1:1 conversion.
+  // ---------------------------------------------------------------------------
 
   void _onCategoryChanged(String? value) {
     if (value == null) return;
@@ -126,6 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _convert() {
+    // Parse the input (allow comma or dot as decimal separator)
     final input = double.tryParse(_valueController.text.replaceAll(',', '.'));
     if (input == null) {
       setState(() {
@@ -137,13 +157,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (_fromUnit == null || _toUnit == null) return;
 
+    // Look up conversion factors to the base unit
     final fromFactor = _toBase[_fromUnit!] ?? 1.0;
     final toFactor = _toBase[_toUnit!] ?? 1.0;
 
-    // Convert: input * fromFactor (to base) / toFactor (to target)
+    // Convert: input -> base unit -> target unit
+    // baseValue = input * fromFactor
+    // result = baseValue / toFactor
     final baseValue = input * fromFactor;
     final result = baseValue / toFactor;
 
+    // Update UI with formatted results
     setState(() {
       _resultFieldController.text = result.toStringAsFixed(3);
       _resultText =
